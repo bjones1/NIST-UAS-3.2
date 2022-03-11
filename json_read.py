@@ -2,7 +2,7 @@
 # |docname| - Read JSON-like data produced by iPerf3
 # **************************************************
 # The JSON data output by iPerf3 --json is valid only when the program runs a single test; after that, the JSON from each run is concatenated, producing an invalid result. This splits each run's data back apart.
-
+#
 # Imports
 # =======
 # These are listed in the order prescribed by `PEP 8
@@ -43,8 +43,8 @@ def read_iperf3_json_log(
     #   .. code-block:: JSON
     #       :linenos:
     #
-    #       {
     #       }
+    #       {
     #
     # Simply adding a comma between these curly brackets, plus sandwiching the entire file with ``[`` and ``]`` produces valid JSON.
     json_str = "[" + pseudo_json.replace("\n}\n{", "\n},\n{") + "]"
