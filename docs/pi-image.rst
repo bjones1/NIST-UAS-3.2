@@ -42,22 +42,13 @@ Pi development configuration
 ----------------------------
 For development, the Pi is configured as a bridged wireless access point. This allows devices plugged in via either Ethernet or connected via WiFi to live on the same subnet, so that iPerf3 client / servers can connect across the Pi. It also allows developers to plug the Pi in to Ethernet and still connect to it via WiFi for testing. When no Ethernet cable is present (meaning the Ethernet interfaced doesn't assign the Pi an IP address), the Pi uses a default address of 169.254.56.126.
 
-This configuration was produced by following the |pi-bridge| instructions. To set this up (warning: this is untested!):
-
-.. code-block:: bash
-
-    sudo apt install -y hostapd
-    sudo systemctl unmask hostapd
-    sudo systemctl enable hostapd
-    cp -r development/files /
-    sudo systemctl enable systemd-networkd
-    sudo rfkill unblock wlan
-    # Reboot for changes to take effect.
-    sudo systemctl reboot
+This configuration was produced by following the |pi-bridge| instructions. To set this up, run `../development/install.sh`.
 
 .. toctree::
     :maxdepth: 2
 
+    ../development/install.sh
+    ../development/files/etc/rc.local
     ../development/files/etc/systemd/network/bridge-br0.netdev
     ../development/files/etc/systemd/network/br0-member-eth0.network
     ../development/files/etc/dhcpcd.conf

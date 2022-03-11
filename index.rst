@@ -19,6 +19,7 @@ Contents
     docs/smartphone-setup
     docs/pi-setup
     docs/pi-image
+    docs/webserver
     docs/misc
 
 

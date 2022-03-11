@@ -145,6 +145,7 @@ CodeChat_lexer_for_glob = {
     "*.network": "INI",
     "docs-requirements.txt": "INI",
     ".gitignore": "INI",
+    "rc.local": "INI",
 }
 
 # `source_encoding <https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-source_encoding>`_:
