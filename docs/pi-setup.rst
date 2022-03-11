@@ -17,7 +17,7 @@ a.  Login with default Raspian credentials (login: pi, pw: raspberry)
     b.  Run: ``iperf3 -s -p 5202 &> logfile-5202 &``
     c.  Additional servers can be started as needed.
 
-#.  Connect devices via ethernet or wifi (SSID: PiNet/UAS3Chal)
+#.  Connect devices via ethernet or wifi (SSID: PiNet, password UAS3Chal)
 
     #.  Ethernet devices will be assigned an address in the 192.168.2.1xx range
     #.  Wi-Fi devices will be assigned an address in the 192.168.3.1xx range

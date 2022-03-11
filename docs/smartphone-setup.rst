@@ -1,6 +1,9 @@
 ****************
 Smartphone setup
 ****************
+
+Android
+=======
 #.  Download Termux for Android device to a PC from https://f-droid.org/en/packages/com.termux/. Download the latest version, currently 0.118.0 (118).
 #.  Copy the downloaded APK to the Android device and install the APK.
 #.  Ensure the Android device is connected to the internet.
@@ -14,3 +17,10 @@ Smartphone setup
 #.  From the Termux terminal ping the Raspberry Pi server to ensure connectivity: ``ping 192.168.3.1``.
 #.  Test data transfer between the UE and Pi from the Termux terminal:
 #.  ``iPerf3 -c 192.168.3.1``
+
+
+iPhone
+======
+#.  Install the iPerf3 Wifi Speed Test app from the Apple app store.
+#.  Open the app. Select a server address of 192.168.3.1 and a test duration of 10s.
+#.  Press start.
