@@ -1,0 +1,7 @@
+# *****************************************************
+# |docname| - Add a bridge network device named ``br0``
+# *****************************************************
+# Taken from |pi-bridge|.
+[NetDev]
+Name=br0
+Kind=bridge

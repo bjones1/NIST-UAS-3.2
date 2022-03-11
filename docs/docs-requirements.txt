@@ -1,0 +1,5 @@
+# *******************************************************************
+# |docname| - Python requirements file for building the documentation
+# *******************************************************************
+# This is used by `../readthedocs.yml` for that build process.
+CodeChat_Server

@@ -1,0 +1,9 @@
+# **************************************************
+# |docname| - bridge ethernet to wireless interfaces
+# **************************************************
+# Taken from |pi-bridge|.
+[Match]
+Name=eth0
+
+[Network]
+Bridge=br0
