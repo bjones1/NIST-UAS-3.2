@@ -1,6 +1,6 @@
-******************************************************************************
-User Instructions to Install Termux app to run ``iPerf3`` on an Android device
-******************************************************************************
+****************
+Smartphone setup
+****************
 #.  Download Termux for Android device to a PC from https://f-droid.org/en/packages/com.termux/. Download the latest version, currently 0.118.0 (118).
 #.  Copy the downloaded APK to the Android device and install the APK.
 #.  Ensure the Android device is connected to the internet.

@@ -46,8 +46,8 @@ import CodeChat.CodeToRest
 # `project <https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-project>`_  and
 # `copyright <https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-copyright>`_:
 # General information about the project. **Change this** for your project.
-project = "Project Name"
-copyright = "2020, Author"
+project = "3.2-Lifelink: UAS Data Relay | UAS Triple Challenge"
+copyright = "2022, NIST/MSU team"
 
 # The version info for the project you're documenting, acts as replacement for
 # ``|version|`` and ``|release|``, also used in various other places throughout
@@ -55,10 +55,10 @@ copyright = "2020, Author"
 #
 # `version <https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-version>`_: The short X.Y
 # version.
-version = "0.0"
+version = "0.1"
 # `release <https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-release>`_: The full
 # version, including alpha/beta/rc tags.
-release = "version 0.0"
+release = "version 0.1"
 
 # There are two options for replacing ``|today|``:
 #
