@@ -1,6 +1,6 @@
-**********************
-Creating the Pi server
-**********************
+******************
+Raspberry Pi setup
+******************
 #.  Download uas-v01.img file from UAS 3.2 Challenge Website.
 #.  Create microSD card using a program like Windows Disk Imager or `Rufus <https://rufus.ie/en/>`_.
 

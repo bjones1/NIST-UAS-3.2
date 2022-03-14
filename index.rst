@@ -14,6 +14,7 @@ User documentation
 
     docs/smartphone-setup
     docs/pi-setup
+    docs/networking
 
 
 Developer documentation
