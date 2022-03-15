@@ -16,6 +16,14 @@ Manual configuration: these steps apply to both the production and development c
     #.  Keyboard 104, US, default
     #.  Enable SSH
 
+#.  Run::
+
+        sudo apt get -y git
+        curl -sSL https://install.python-poetry.org | python3 -
+        git clone https://github.com/bjones1/NIST-UAS-3.2.git
+        cd NIST-UAS-3.2/webperf3
+        poetry update
+
 After this, follow the steps in the production or development configuration.
 
 
@@ -69,7 +77,8 @@ Finally, create an image from the working Pi setup produced by following the pre
     #.  Connect flash drive
     #.  Run::
 
-            sudo fdisk -l # (shows /dev/sda)
+            # (shows /dev/sda)
+            sudo fdisk -l
             sudo mount /dev/sda1 /media/usb
 
 #.  Create the image: ``sudo dd if=/dev/mmcblk0 of=/media/usb/pi.img bs=1k conv=noerror``. This took about 20 minutes

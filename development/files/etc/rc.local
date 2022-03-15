@@ -20,7 +20,8 @@ if [ "$_IP" ]; then
   printf "My IP address is %s\n" "$_IP"
 fi
 
-# Start an iPerf3 server.
-iperf3 --server --json --port 5201 --logfile /home/pi/port-5201-log.json &
+# Start an iPerf3 webserver.
+cd /home/pi/NIST-UAS-3.2/webperf3
+poetry run webperf3 10 &
 
 exit 0
