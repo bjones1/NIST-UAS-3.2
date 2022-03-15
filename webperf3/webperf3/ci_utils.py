@@ -4,8 +4,7 @@
 #
 # Imports
 # =======
-# These are listed in the order prescribed by `PEP 8
-# <http://www.python.org/dev/peps/pep-0008/#imports>`_.
+# These are listed in the order prescribed by `PEP 8`_.
 #
 # Standard library
 # ----------------

@@ -126,7 +126,8 @@ rst_epilog = (
     # Common hyperlinks.
     """
 .. |pi-bridge| replace:: `Setting up a Bridged Wireless Access Point <https://www.raspberrypi.com/documentation/computers/configuration.html#setting-up-a-bridged-wireless-access-point>`__
-    """
+.. _PEP 8: http://www.python.org/dev/peps/pep-0008/#imports
+"""
 )
 
 # `source_suffix <https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-source_suffix>`_:
@@ -174,6 +175,7 @@ exclude_patterns = [
     "Thumbs.db",
     ".DS_Store",
     "webperf3/.venv",
+    "webperf3/poetry.lock",
     # **CodeChat notes:**
     #
     # By default, the `CodeChat System <https://codechat-system.readthedocs.io/>`_
