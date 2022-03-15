@@ -107,7 +107,7 @@ pygments_style = "sphinx"
 # **CodeChat note:** The ``CodeChat.CodeToRestSphinx`` extension is mandatory;
 # without it, CodeChat will not translate source code to reST and then (via
 # Sphinx) to html.
-extensions = ["CodeChat.CodeToRestSphinx"]
+extensions = ["CodeChat.CodeToRestSphinx", "sphinx.ext.graphviz", ]
 
 # `templates_path <https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-templates_path>`_:
 # Add any paths that contain templates here, relative to this directory.
@@ -143,6 +143,7 @@ CodeChat_lexer_for_glob = {
     "*.conf": "INI",
     "*.netdev": "INI",
     "*.network": "INI",
+    ".flake8": "INI",
     "docs-requirements.txt": "INI",
     ".gitignore": "INI",
     "rc.local": "INI",
@@ -172,6 +173,7 @@ exclude_patterns = [
     # Misc files.
     "Thumbs.db",
     ".DS_Store",
+    "webperf3/.venv",
     # **CodeChat notes:**
     #
     # By default, the `CodeChat System <https://codechat-system.readthedocs.io/>`_

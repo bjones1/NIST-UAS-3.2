@@ -35,17 +35,6 @@ from typing import Any, Dict, Tuple, Union
 # None.
 #
 #
-# OS detection
-# ============
-# This follows the `Python recommendations <https://docs.python.org/3/library/sys.html#sys.platform>`_.
-is_win = sys.platform == "win32"
-is_linux = sys.platform.startswith("linux")
-is_darwin = sys.platform == "darwin"
-
-# Copied from https://docs.python.org/3.5/library/platform.html#cross-platform.
-is_64bits = sys.maxsize > 2**32
-
-
 # iPerf3 utilities
 # ================
 # These functions interact with iPerf3.
@@ -119,66 +108,6 @@ def start_iperf3_servers(
             f"iperf3 --server --json --port {server_index + starting_port} "
             f"--logfile {start_iperf3_servers(server_index)} &"
         )
-
-
-# Python command-line utilities
-# =============================
-# These tools make it easier to do shell-like scripting in Python.
-#
-# xqt
-# ---
-# Pronounced "execute": provides a simple way to execute a system command.
-def xqt(
-    # Commands to run. For example, ``'foo -param firstArg secondArg', 'bar |
-    # grep alpha'``.
-    *cmds,
-    # Optional keyword arguments to pass on to `subprocess.run <https://docs.python.org/3/library/subprocess.html#subprocess.run>`_.
-    **kwargs
-):
-
-    ret = []
-    # Although https://docs.python.org/3/library/subprocess.html#subprocess.Popen
-    # states, "The only time you need to specify ``shell=True`` on Windows is
-    # when the command you wish to execute is built into the shell (e.g.
-    # **dir** or **copy**). You do not need ``shell=True`` to run a batch file
-    # or console-based executable.", use ``shell=True`` to both allow shell
-    # commands and to support simple redirection (such as ``blah > nul``,
-    # instead of passing ``stdout=subprocess.DEVNULL`` to ``check_call``).
-    for _ in cmds:
-        # Per http://stackoverflow.com/questions/15931526/why-subprocess-stdout-to-a-file-is-written-out-of-order,
-        # the ``check_call`` below will flush stdout and stderr, causing all
-        # the subprocess output to appear first, followed by all the Python
-        # output (such as the print statement above). So, flush the buffers to
-        # avoid this.
-        flush_print(_)
-        # Use bash instead of sh, so that ``source`` and other bash syntax
-        # works. See https://docs.python.org/3/library/subprocess.html#subprocess.Popen.
-        executable = "/bin/bash" if is_linux or is_darwin else None
-        try:
-            cp = subprocess.run(
-                _, shell=True, executable=executable, check=True, **kwargs
-            )
-        except subprocess.CalledProcessError as e:
-            flush_print(
-                "Subprocess output:\n{}\n{}".format(e.stderr or "", e.stdout or "")
-            )
-            raise
-        ret.append(cp)
-
-    # Return a list only if there were multiple commands to execute.
-    return ret[0] if len(ret) == 1 else ret
-
-
-# flush_print
-# -----------
-# Anything sent to ``print`` won't be printed until Python flushes its buffers,
-# which means what CI logs report may be reflect what's actually being executed
-# -- until the buffers are flushed.
-def flush_print(*args, **kwargs):
-    print(*args, **kwargs)
-    # Flush both buffers, just in case there's something in ``stdout``.
-    sys.stdout.flush()
-    sys.stderr.flush()
 
 
 # Main

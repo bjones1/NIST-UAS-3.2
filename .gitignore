@@ -33,4 +33,4 @@ dist/
 # Others
 .mypy_cache/
 .tox/
-.venv/
+webperf3/.venv/
