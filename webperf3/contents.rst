@@ -27,7 +27,7 @@ A standard dev setup: use Poetry, Black, flake8, mypy, pytest, and coverage.
     :maxdepth: 2
 
     pyproject.toml
-    test/pre_commit_check.py
+    pre_commit_check.py
     test/test_webperf3.py
     mypy.ini
     .flake8
