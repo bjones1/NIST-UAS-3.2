@@ -102,7 +102,7 @@ def iperf3_log_file_name(
     # A value between 0 and the ``num_servers`` passed to `start iPerf3 servers`_.
     server_index: int,
     # A Path to an iPerf3 log file.
-) -> str:
+) -> Path:
     return (
         Path.home() / f"/iperf3-logs/port-{server_index}.json"
         if is_win

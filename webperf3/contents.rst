@@ -15,6 +15,7 @@ Modules
 
     webperf3/webperf3.py
     webperf3/ci_utils.py
+    webperf3/__init__.py
     webperf3/__main__.py
 
 
@@ -28,4 +29,5 @@ A standard dev setup: use Poetry, Black, flake8, mypy, pytest, and coverage.
     pyproject.toml
     test/pre_commit_check.py
     test/test_webperf3.py
+    mypy.ini
     .flake8
