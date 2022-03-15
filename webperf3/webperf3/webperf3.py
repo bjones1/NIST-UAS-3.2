@@ -143,13 +143,17 @@ def report_stats():
     # Previous iPerf3 data is stored in a cookie.
     try:
         prev_iperf3_data = json.loads(request.cookies.iperf3_data)
-        assert isinstance(prev_iperf3_data, list) and len(prev_iperf3_data) == num_servers
+        assert (
+            isinstance(prev_iperf3_data, list) and len(prev_iperf3_data) == num_servers
+        )
     except (json.decoder.JSONDecodeError, AssertionError):
         prev_iperf3_data = [None] * num_servers
     iperf3_data = []
     for index in range(num_servers):
         try:
-            d = extract_iperf3_performance(read_iperf3_json_log(iperf3_log_file_name(index)))
+            d = extract_iperf3_performance(
+                read_iperf3_json_log(iperf3_log_file_name(index))
+            )
         # If there's no log file yet, add a blank entry.
         except FileNotFoundError:
             d = [0, 0, ""]
