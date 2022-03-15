@@ -20,10 +20,9 @@
 # ----------------
 from json import loads
 from pathlib import Path
-import subprocess
 import sys
 from textwrap import dedent
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 # Third-party imports
 # -------------------
@@ -31,9 +30,9 @@ from typing import Any, Dict, Tuple, Union
 #
 # Local application imports
 # -------------------------
-# None.
-#
-#
+from .ci_utils import xqt
+
+
 # iPerf3 utilities
 # ================
 # These functions interact with iPerf3.
@@ -44,9 +43,8 @@ from typing import Any, Dict, Tuple, Union
 def read_iperf3_json_log(
     # The Path (or its equivalent string) of the log file to read.
     log_path: Union[Path, str],
-
     # Returns the last iPerf3 result; this is a huge struct of iPerf3 data.
-) -> Dict[Any]:
+) -> Dict[str, Any]:
 
     pseudo_json = Path(log_path).read_text()
     # Each run of iPerf3 appends a valid JSON string to the log file; however, this makes the overall file invalid JSON after the first append. The structure looks like this:
@@ -62,7 +60,12 @@ def read_iperf3_json_log(
     #   }
     #
     # Since we only care about the last run, a simple backwards search for a single line containing an ``{`` with no leading spaces identifies the beginning of the last group of JSON data.
-    json_str = pseudo_json[pseudo_json.rindex("\n{") + 1:]
+    try:
+        index = pseudo_json.rindex("\n{") + 1
+    except ValueError:
+        # Special case: there's only one block of JSON data; therefore, include the entire file when loading JSON data.
+        index = 0
+    json_str = pseudo_json[index:]
     return loads(json_str)
 
 
@@ -70,16 +73,22 @@ def read_iperf3_json_log(
 # -------------------------------------------------
 def extract_iperf3_performance(
     # The iPerf3 log data returned by `read iPerf3 logs`_.
-    iperf3_log_data: Dict[Any],
+    iperf3_log_data: Dict[str, Any],
 ) -> Tuple[
     # The average bits per second sent by the server.
     float,
     # The average bits per second received by the server.
-    float
+    float,
+    # The extra data provided by the client, if present; ``None`` otherwise.
+    Optional[str],
 ]:
     # Extract the relevant data from the JSON file.
-    se = data["end"]["streams"]
-    return se[1]["sender"]["bits_per_second"], se[0]["receiver"]["bits_per_second"]
+    se = iperf3_log_data["end"]["streams"]
+    return (
+        se[1]["sender"]["bits_per_second"],
+        se[0]["receiver"]["bits_per_second"],
+        iperf3_log_data.get("extra_data"),
+    )
 
 
 # Name iPerf3 log files
