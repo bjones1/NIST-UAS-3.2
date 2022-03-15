@@ -1,7 +1,15 @@
 *************************************************
 webperf3 - A web server to display iPerf3 results
 *************************************************
+Basic setup for development:
 
+#.  Install `Poetry <https://python-poetry.org/docs/master/#installing-with-the-official-installer>`_.
+#.  Install this project: ``poetry install``.
+#.  Run the tests: ``poetry run test/pre_commit_check.py``.
+
+
+Modules
+=======
 .. toctree::
     :maxdepth: 2
 
@@ -11,6 +19,8 @@ webperf3 - A web server to display iPerf3 results
 
 Development support
 ===================
+A standard dev setup: use Poetry, Black, flake8, mypy, pytest, and coverage.
+
 .. toctree::
     :maxdepth: 2
 
