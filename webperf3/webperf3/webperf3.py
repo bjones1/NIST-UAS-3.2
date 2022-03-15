@@ -70,8 +70,14 @@ def read_iperf3_json_log(
     except ValueError:
         # Special case: there's only one block of JSON data; therefore, include the entire file when loading JSON data.
         index = 0
-    json_str = pseudo_json[index:]
-    return json.loads(json_str)
+
+    # Errors produce confused JSON intermixed with error messages.
+    try:
+
+        json_str = pseudo_json[index:]
+        return json.loads(json_str)
+    except json.decoder.JSONDecodeError:
+        return {}
 
 
 # Extract iPerf3 data rates (bps) from its log data
@@ -88,12 +94,14 @@ def extract_iperf3_performance(
     Optional[str],
 ]:
     # Extract the relevant data from the JSON file.
-    se = iperf3_log_data["end"]["streams"]
-    return (
-        se[1]["sender"]["bits_per_second"],
-        se[0]["receiver"]["bits_per_second"],
-        iperf3_log_data.get("extra_data"),
-    )
+    try:
+        se = iperf3_log_data["end"]["streams"]
+        send_bps = se[1]["sender"]["bits_per_second"]
+        receive_bps = se[0]["receiver"]["bits_per_second"]
+    except KeyError:
+        send_bps = None
+        receive_bps = None
+    return send_bps, receive_bps, iperf3_log_data.get("extra_data")
 
 
 # Name iPerf3 log files
@@ -135,42 +143,62 @@ def report_stats():
     # Previous iPerf3 data is stored in a cookie.
     try:
         prev_iperf3_data = json.loads(request.cookies.iperf3_data)
-    except json.decoder.JSONDecodeError:
+        assert isinstance(prev_iperf3_data, list) and len(prev_iperf3_data) == num_servers
+    except (json.decoder.JSONDecodeError, AssertionError):
         prev_iperf3_data = [None] * num_servers
     iperf3_data = []
     for index in range(num_servers):
         try:
-            d = read_iperf3_json_log(iperf3_log_file_name(index))
+            d = extract_iperf3_performance(read_iperf3_json_log(iperf3_log_file_name(index)))
         # If there's no log file yet, add a blank entry.
         except FileNotFoundError:
             d = [0, 0, ""]
         iperf3_data.append(d)
     response.set_cookie("iperf3_data", json.dumps(iperf3_data))
-    print(iperf3_data)
+    print(iperf3_data, prev_iperf3_data)
     return template(
         dedent(
             """
-            <h1>iPerf3 performance measurements</h1>
-            <table>
-                <tr>
-                    <th>Index</th>
-                    <th>Name</th>
-                    <th>Send rate (bps)</th>
-                    <th>Receive rate (bps)</th>
-                    <th>New</th>
-                </tr>
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>iPerf3 performance measurements</title>
+                    <style>
+                        table, th, td {
+                            border: 1px solid white;
+                            border-collapse: collapse;
+                        }
+                        th, td {
+                            background-color: #96D4D4;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>iPerf3 performance measurements</h1>
+                    <table>
+                        <tr>
+                            <th>Index</th>
+                            <th style="width: 20rem">Name</th>
+                            <th style="width: 10rem">Send rate (bps)</th>
+                            <th style="width: 10rem">Receive rate (bps)</th>
+                            <th>New</th>
+                        </tr>
 
-                % for index in range(num_servers):
-                    % d = iperf3_data[index]
-                    <tr>
-                        <td>{{index + 1}}</td>
-                        <td>{{d[2]}}</td>
-                        <td>{{d[0]}}</td>
-                        <td>{{d[1]}}</td>
-                        <td>{{"new" if d != prev_iperf3_data[index] else ""}}
-                    </tr>
-                % end
-            </table>
+                        % for index in range(num_servers):
+                            % # Use ``list()`` since prev_iperf3_data is a list, while iperf3_data is a tuple.
+                            % d = list(iperf3_data[index])
+                            <tr>
+                                <td>{{index + 1}}</td>
+                                <td>{{d[2]}}</td>
+                                <td>{{d[0]}}</td>
+                                <td>{{d[1]}}</td>
+                                <td>{{"new" if d != prev_iperf3_data[index] else ""}}
+                            </tr>
+                        % end
+                    </table>
+                </body>
+            </html>
             """
         ),
         num_servers=num_servers,

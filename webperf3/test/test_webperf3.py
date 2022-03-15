@@ -48,8 +48,6 @@ def test_2():
 
 def test_3():
     d = read_iperf3_json_log(test_local / "error_0_iperf3_output.json")
-    assert extract_iperf3_performance(d) == (
-        5930752506.02558,
-        5060954075.1963663,
-        "UE name 1 here",
-    )
+    assert extract_iperf3_performance(d) == (None, None, None)
+    d = read_iperf3_json_log(test_local / "error_1_iperf3_output.json")
+    assert extract_iperf3_performance(d) == (None, None, None)
