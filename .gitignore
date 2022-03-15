@@ -34,3 +34,4 @@ dist/
 .mypy_cache/
 .tox/
 webperf3/.venv/
+.coverage

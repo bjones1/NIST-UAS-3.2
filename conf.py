@@ -176,6 +176,8 @@ exclude_patterns = [
     ".DS_Store",
     "webperf3/.venv",
     "webperf3/poetry.lock",
+    "webperf3/.mypy_cache",
+    "webperf3/.pytest_cache",
     # **CodeChat notes:**
     #
     # By default, the `CodeChat System <https://codechat-system.readthedocs.io/>`_

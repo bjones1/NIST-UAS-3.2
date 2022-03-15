@@ -8,3 +8,7 @@ max-line-length = 50000
 
 # Make this play nicely with Black. See the `docs <https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html#flake8>`__.
 extend-ignore = E203
+
+exclude =
+  _build/
+  .venv/
