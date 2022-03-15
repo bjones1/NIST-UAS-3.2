@@ -35,3 +35,4 @@ dist/
 .tox/
 webperf3/.venv/
 .coverage
+webperf3/poetry.lock

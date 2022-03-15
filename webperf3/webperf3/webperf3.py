@@ -18,7 +18,7 @@
 #
 # Standard library
 # ----------------
-from json import loads
+import json
 from pathlib import Path
 import sys
 from textwrap import dedent
@@ -26,11 +26,16 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 # Third-party imports
 # -------------------
-# None.
-#
+from bottle import route, request, response, run, template
+
 # Local application imports
 # -------------------------
-from .ci_utils import xqt
+from .ci_utils import is_win, xqt
+
+
+# Globals
+# =======
+num_servers = None
 
 
 # iPerf3 utilities
@@ -66,7 +71,7 @@ def read_iperf3_json_log(
         # Special case: there's only one block of JSON data; therefore, include the entire file when loading JSON data.
         index = 0
     json_str = pseudo_json[index:]
-    return loads(json_str)
+    return json.loads(json_str)
 
 
 # Extract iPerf3 data rates (bps) from its log data
@@ -98,7 +103,11 @@ def iperf3_log_file_name(
     server_index: int,
     # A Path to an iPerf3 log file.
 ) -> str:
-    return Path(f"/home/pi/iperf3-logs/port-{server_index}.json")
+    return (
+        Path.home() / f"/iperf3-logs/port-{server_index}.json"
+        if is_win
+        else Path(f"/home/pi/iperf3-logs/port-{server_index}.json")
+    )
 
 
 # Start iPerf3 servers
@@ -112,29 +121,89 @@ def start_iperf3_servers(
     # The first port (which iPerf3 defaults to) to use when starting servers.
     starting_port = 5201
     for server_index in range(num_servers):
-        xqt(
+        cmd = (
             f"iperf3 --server --json --port {server_index + starting_port} "
-            f"--logfile {start_iperf3_servers(server_index)} &"
+            f"--logfile {iperf3_log_file_name(server_index)}"
         )
+        xqt(f"start {cmd}" if is_win else f"{cmd} &")
+
+
+# Webserver
+# =========
+@route("/")
+def report_stats():
+    # Previous iPerf3 data is stored in a cookie.
+    try:
+        prev_iperf3_data = json.loads(request.cookies.iperf3_data)
+    except json.decoder.JSONDecodeError:
+        prev_iperf3_data = [None] * num_servers
+    iperf3_data = []
+    for index in range(num_servers):
+        try:
+            d = read_iperf3_json_log(iperf3_log_file_name(index))
+        # If there's no log file yet, add a blank entry.
+        except FileNotFoundError:
+            d = [0, 0, ""]
+        iperf3_data.append(d)
+    response.set_cookie("iperf3_data", json.dumps(iperf3_data))
+    print(iperf3_data)
+    return template(
+        dedent(
+            """
+            <h1>iPerf3 performance measurements</h1>
+            <table>
+                <tr>
+                    <th>Index</th>
+                    <th>Name</th>
+                    <th>Send rate (bps)</th>
+                    <th>Receive rate (bps)</th>
+                    <th>New</th>
+                </tr>
+
+                % for index in range(num_servers):
+                    % d = iperf3_data[index]
+                    <tr>
+                        <td>{{index + 1}}</td>
+                        <td>{{d[2]}}</td>
+                        <td>{{d[0]}}</td>
+                        <td>{{d[1]}}</td>
+                        <td>{{"new" if d != prev_iperf3_data[index] else ""}}
+                    </tr>
+                % end
+            </table>
+            """
+        ),
+        num_servers=num_servers,
+        iperf3_data=iperf3_data,
+        prev_iperf3_data=prev_iperf3_data,
+    )
 
 
 # Main
 # ====
-if __name__ == "__main__":
+def main(argv):
     # Parse command line.
-    if len(sys.argv < 1):
+    if len(argv) != 2:
         print(
             dedent(
                 f"""
-                Usage: {sys.argv[0]} NUM_PORTS
+                Usage: {argv[0]} NUM_PORTS
                 where NUM_PORTS gives the number of ports to monitor.
 
-                Error: {'missing NUM_PORTS.' if sys.argv < 2 else 'too many arguments.'}
+                Error: {'missing NUM_PORTS.' if len(argv) < 2 else 'too many arguments.'}
                 """
-            )
+            ),
+            file=sys.stderr,
         )
-    num_ports = int(sys.argv[1])
-    start_iperf3_servers(num_ports)
+        return
+    global num_servers
+    num_servers = int(argv[1])
 
-    # TODO: monitor all log files.
-    data = read_iperf3_json_log(iperf3_log_file_name(0))
+    # Set up logging subdirectory.
+    log_dir = iperf3_log_file_name(0).parent
+    print(f"Logging iPerf3 data to {log_dir}.")
+    log_dir.mkdir(exist_ok=True)
+
+    # Start iPerf3 and the webserver.
+    start_iperf3_servers(num_servers)
+    run(host="0.0.0.0", port=80)

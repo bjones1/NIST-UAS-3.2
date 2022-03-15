@@ -24,6 +24,7 @@ license = "GPL"
 # See https://python-poetry.org/docs/dependency-specification/ to get an understanding of
 # how poetry specifies dependencies.
 [tool.poetry.dependencies]
+bottle = "^0.12"
 python = "^3.9"
 watchgod = "^0.8"
 

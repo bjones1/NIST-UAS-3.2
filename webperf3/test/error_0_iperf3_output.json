@@ -1,0 +1,35 @@
+{
+	"start":	{
+		"connected":	[],
+		"version":	"iperf 3.10.1",
+		"system_info":	"CYGWIN_NT-10.0-19044 gv41y33 3.3.4-341.x86_64 2022-01-31 19:35 UTC x86_64"
+	},
+	"intervals":	[],
+	"end":	{
+	},
+	"error":	"error - unable to start listener for connections: Address already in use"
+}
+iperf3: exiting
+{
+	"start":	{
+		"connected":	[],
+		"version":	"iperf 3.10.1",
+		"system_info":	"CYGWIN_NT-10.0-19044 gv41y33 3.3.4-341.x86_64 2022-01-31 19:35 UTC x86_64"
+	},
+	"intervals":	[],
+	"end":	{
+	},
+	"error":	"error - unable to start listener for connections: Address already in use"
+}
+iperf3: exiting
+{
+	"start":	{
+		"connected":	[],
+		"version":	"iperf 3.10.1",
+		"system_info":	"CYGWIN_NT-10.0-19044 gv41y33 3.3.4-341.x86_64 2022-01-31 19:35 UTC x86_64"
+	},
+	"intervals":	[],
+	"end":	{
+	},
+	"error":	"interrupt - the server has terminated"
+}
