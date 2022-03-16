@@ -1,12 +1,11 @@
 # **************************************************
 # |docname| - A web server to display iPerf3 results
 # **************************************************
-# TODO: This isn't a web server quite yet... Overall plan:
+# This program consists of:
 #
-# - Run iPerf3 servers; monitor for changes to log files, displaying each run to the console. Need to write unit tests.
-# - Get Bottle running with a simple template to display results and scoring.
-# - Get a websocket running to send the client updates.
-# - Think about data to download as csv files, or .json logs. When to delete logs?
+# - `iPerf3 utilities`_, which run iPerf3 servers and interpret the results from JSON logs the servers create.
+# - A webserver_, which reports iPerf3 results.
+# - A `websockets and watcher`_, which looks for changes to the iPerf3 log files. A change causes the websocket to refresh the client, displaying any new results.
 #
 # .. contents:: Table of Contents
 #   :local:
@@ -18,15 +17,20 @@
 #
 # Standard library
 # ----------------
+import asyncio
 import json
 from pathlib import Path
 import sys
 from textwrap import dedent
+from threading import Thread
 from typing import Any, Dict, Optional, Tuple, Union
 
 # Third-party imports
 # -------------------
-from bottle import route, request, response, run, template
+from bottle import route, request, response, run, static_file, template
+from watchgod import awatch
+import websockets
+import websockets.server
 
 # Local application imports
 # -------------------------
@@ -35,6 +39,7 @@ from .ci_utils import is_win, xqt
 
 # Globals
 # =======
+# The number of iPerf3 servers in use by this program.
 num_servers = None
 
 
@@ -168,6 +173,52 @@ def report_stats():
                 <head>
                     <meta charset="utf-8">
                     <title>iPerf3 performance measurements</title>
+
+                    <!-- Use the ``ReconnectingWebsocket`` to automatically reconnect a websocket when the network connection drops. -->
+                    <script src="/static/ReconnectingWebsocket.js?v=1"></script>
+
+                    <script>
+                        let setIsConnected = (text, backgroundColor) => {
+                            let ic = document.getElementById("is_connected");
+                            ic.textContent = text;
+                            ic.style.backgroundColor = backgroundColor;
+                        };
+                        // Create a websocket to communicate with the CodeChat Server.
+                        let ws = new ReconnectingWebSocket(
+                            `ws://${window.location.hostname}:8765`
+                        );
+
+                        // When connected, update the webpage's connection status.
+                        ws.onopen = () => {
+                            console.log(
+                                "webperf3 client: websocket to webperf3 server open."
+                            );
+                            setIsConnected("online", "white")
+                        };
+
+                        // Provide logging to help track down errors.
+                        ws.onerror = (event) => {
+                            console.error(`webperf3 client: websocket error ${event}.`);
+                        };
+
+                        // When disconnected, update the webpage's connection status.
+                        ws.onclose = (event) => {
+                            console.log(
+                                `webperf3 client: websocket closed by event ${event}.`
+                            );
+                            setIsConnected("offline", "salmon")
+                        };
+
+                        // Handle messages.
+                        ws.onmessage = (event) => {
+                            if (event.data === "new data") {
+                                location.reload();
+                            } else {
+                                console.error(`webperf3 client: websocket received unknown message ${event.data}`);
+                            }
+                        }
+                    </script>
+
                     <style>
                         table, th, td {
                             border: 1px solid white;
@@ -201,6 +252,9 @@ def report_stats():
                             </tr>
                         % end
                     </table>
+                    <div>
+                        Status: <span id="is_connected">TODO</span>
+                    </div>
                 </body>
             </html>
             """
@@ -209,6 +263,66 @@ def report_stats():
         iperf3_data=iperf3_data,
         prev_iperf3_data=prev_iperf3_data,
     )
+
+
+# Copied from the `bottle docs <http://bottlepy.org/docs/dev/tutorial.html#routing-static-files>`_.
+@route("/static/<filename>")
+def server_static(filename):
+    return static_file(filename, root=str(Path(__file__).parent))
+
+
+# Websockets and watcher
+# ======================
+# The watcher monitors the log directory, sending a message over a websocket to the client when the client needs to be updated.
+class WebSocketWatcher:
+    def __init__(
+        self,
+        # A Path to the directory containing logs.
+        log_path: Path,
+    ):
+        self.log_path = log_path
+        self.stop_event: Optional[asyncio.Event] = None
+        self.thread = None
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
+
+    def start(self):
+        self.thread = Thread(target=asyncio.run, args=(self.amain(),))
+        self.thread.start()
+
+    # This handles an open websocket connection.
+    async def update(
+        self,
+        # The opened websocket that can now be read or written.
+        websocket: websockets.server.WebSocketServerProtocol,
+    ) -> None:
+        try:
+            async for change in awatch(self.log_path):
+                print(change)
+                await websocket.send("new data")
+        except websockets.exceptions.WebSocketException:
+            # Just allow the socket to close.
+            pass
+        print("Websocket connection closed.")
+
+    # This is the websocket server main loop, which waits for connections.
+    async def amain(self) -> None:
+        self.loop = asyncio.get_running_loop()
+        self.stop_event = asyncio.Event()
+
+        async with websockets.serve(self.update, "0.0.0.0", 8765):  # type:ignore
+            # Run until a stop is requested. Makes no sense to me...
+            print("Waiting for event...")
+            await self.stop_event.wait()
+            print("Event wait finished.")
+        print("Websocket server shutting down...")
+
+    # Shut down the websocket / watcher from another thread.
+    def stop(self):
+        print("Setting event...")
+        self.loop.call_soon_threadsafe(self.stop_event.set)
+        print("Event set. Joining thread...")
+        self.thread.join()
+        print("Join finished.")
 
 
 # Main
@@ -236,6 +350,11 @@ def main(argv):
     print(f"Logging iPerf3 data to {log_dir}.")
     log_dir.mkdir(exist_ok=True)
 
-    # Start iPerf3 and the webserver.
     start_iperf3_servers(num_servers)
+    wsw = WebSocketWatcher(log_dir)
+    wsw.start()
     run(host="0.0.0.0", port=80)
+
+    # Shut down.
+    print("Shutting down...")
+    wsw.stop()

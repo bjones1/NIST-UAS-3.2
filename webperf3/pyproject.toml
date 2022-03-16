@@ -27,6 +27,7 @@ license = "GPL"
 bottle = "^0.12"
 python = "^3.9"
 watchgod = "^0.8"
+websockets = "^10.0"
 
 
 # Development dependencies
