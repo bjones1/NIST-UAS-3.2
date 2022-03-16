@@ -170,7 +170,7 @@ def report_stats():
             )
         # If there's no log file yet, add a blank entry.
         except FileNotFoundError:
-            d = [0, 0, ""]
+            d = [None, None, None]
         iperf3_data.append(d)
 
     # Save it for the next change detection.
@@ -257,10 +257,10 @@ def report_stats():
                             % d = list(iperf3_data[index])
                             <tr>
                                 <td>{{index + 1}}</td>
-                                <td>{{d[2]}}</td>
-                                <td>{{d[0]}}</td>
-                                <td>{{d[1]}}</td>
-                                <td>{{"new" if d != prev_iperf3_data[index] else ""}}
+                                <td>{{d[2] or ""}}</td>
+                                <td>{{"" if d[0] is None else "{0:,}".format(round(d[0]))}}</td>
+                                <td>{{"" if d[1] is None else "{0:,}".format(round(d[1]))}}</td>
+                                <td>{{"X" if d != prev_iperf3_data[index] else ""}}
                             </tr>
                         % end
                     </table>
