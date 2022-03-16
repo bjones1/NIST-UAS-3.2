@@ -9,17 +9,4 @@ Raspberry Pi setup
 
     .. image:: Rufus.png
 
-#.  Insert card in Raspberry Pi 4 and power on.
-a.  Login with default Raspian credentials (login: pi, pw: raspberry)
-#.  Start server instances
-
-    a.  Run: ``iperf3 -s -p 5201 &> logfile-5201 &``
-    b.  Run: ``iperf3 -s -p 5202 &> logfile-5202 &``
-    c.  Additional servers can be started as needed.
-
-#.  Connect devices via ethernet or wifi (SSID: PiNet, password UAS3Chal)
-
-    #.  Ethernet devices will be assigned an address in the 192.168.2.1xx range
-    #.  Wi-Fi devices will be assigned an address in the 192.168.3.1xx range
-
-#.  Configure UEs and run data tests.
+#.  Insert card in Raspberry Pi 4 and power on. Optionally, login with default Raspian credentials (login: pi, pw: raspberry).

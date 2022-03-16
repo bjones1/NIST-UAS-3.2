@@ -12,9 +12,9 @@ User documentation
 .. toctree::
     :maxdepth: 2
 
-    docs/smartphone-setup
-    docs/pi-setup
     docs/networking
+    docs/pi-setup
+    docs/smartphone-setup
 
 
 Developer documentation

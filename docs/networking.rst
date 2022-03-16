@@ -7,7 +7,7 @@ Competition
 In this mode, the resulting network lacks a connection to the Internet.
 
 -   The Pi connects to a monitoring station on the ground from its internal WiFi. It assigns IP addresses to devices connected via WiFi and Ethernet.
--   An WiFi access point / router connects via Ethernet to its WAN jack (not the LAN jacks).
+-   A WiFi access point / router connects via Ethernet to its WAN jack (not the LAN jacks).
 -   The UEs connect to this access point.
 
 The external access point / router must allow connections from UEs back to the Pi.
