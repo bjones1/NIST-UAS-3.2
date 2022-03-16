@@ -5,18 +5,22 @@
 #
 # - `iPerf3 utilities`_, which run iPerf3 servers and interpret the results from JSON logs the servers create.
 # - A webserver_, which reports iPerf3 results.
-# - A `websockets and watcher`_, which looks for changes to the iPerf3 log files. A change causes the websocket to refresh the client, displaying any new results.
+# - A `websocket and watcher`_, which looks for changes to the iPerf3 log files. A change causes the websocket to refresh the client, displaying any new results.
 #
 # .. contents:: Table of Contents
 #   :local:
+#   :depth: 2
 #
+#
+# Preamble
+# ========
 #
 # Imports
-# =======
+# -------
 # These are listed in the order prescribed by `PEP 8`_.
 #
 # Standard library
-# ----------------
+# ^^^^^^^^^^^^^^^^
 import asyncio
 import json
 from pathlib import Path
@@ -26,19 +30,18 @@ from threading import Thread
 from typing import Any, Dict, Optional, Tuple, Union
 
 # Third-party imports
-# -------------------
+# ^^^^^^^^^^^^^^^^^^^
 from bottle import route, request, response, run, static_file, template
 from watchgod import awatch
 import websockets
 import websockets.server
 
 # Local application imports
-# -------------------------
+# ^^^^^^^^^^^^^^^^^^^^^^^^^
 from .ci_utils import is_win, xqt
 
-
 # Globals
-# =======
+# -------
 # The number of iPerf3 servers in use by this program.
 num_servers = None
 
@@ -143,6 +146,10 @@ def start_iperf3_servers(
 
 # Webserver
 # =========
+#
+# Main page
+# ---------
+# This is the main web page which displays iPerf3 stats.
 @route("/")
 def report_stats():
     # Previous iPerf3 data is stored in a cookie.
@@ -153,6 +160,8 @@ def report_stats():
         )
     except (json.decoder.JSONDecodeError, AssertionError):
         prev_iperf3_data = [None] * num_servers
+
+    # Look at logs to get current iPerf3 data.
     iperf3_data = []
     for index in range(num_servers):
         try:
@@ -163,8 +172,11 @@ def report_stats():
         except FileNotFoundError:
             d = [0, 0, ""]
         iperf3_data.append(d)
+
+    # Save it for the next change detection.
     response.set_cookie("iperf3_data", json.dumps(iperf3_data))
-    print(iperf3_data, prev_iperf3_data)
+
+    # Send the webpage. TODO: split this into separate JS, CSS, and an HTML template, so that a reload takes a bit less time/data.
     return template(
         dedent(
             """
@@ -253,7 +265,7 @@ def report_stats():
                         % end
                     </table>
                     <div>
-                        Status: <span id="is_connected">TODO</span>
+                        Status: <span id="is_connected">waiting</span>.
                     </div>
                 </body>
             </html>
@@ -265,16 +277,20 @@ def report_stats():
     )
 
 
-# Copied from the `bottle docs <http://bottlepy.org/docs/dev/tutorial.html#routing-static-files>`_.
+# Static files
+# ------------
+# Serve static files (JS needed by the main page). Copied from the `bottle docs <http://bottlepy.org/docs/dev/tutorial.html#routing-static-files>`_.
 @route("/static/<filename>")
 def server_static(filename):
     return static_file(filename, root=str(Path(__file__).parent))
 
 
-# Websockets and watcher
-# ======================
+# Websocket and watcher
+# =====================
 # The watcher monitors the log directory, sending a message over a websocket to the client when the client needs to be updated.
 class WebSocketWatcher:
+# Startup / shutdown
+# ------------------
     def __init__(
         self,
         # A Path to the directory containing logs.
@@ -289,6 +305,13 @@ class WebSocketWatcher:
         self.thread = Thread(target=asyncio.run, args=(self.amain(),))
         self.thread.start()
 
+    # Shut down the websocket / watcher from another thread.
+    def stop(self):
+        self.loop.call_soon_threadsafe(self.stop_event.set)
+        self.thread.join()
+
+# Websocket and watcher core
+# --------------------------
     # This handles an open websocket connection.
     async def update(
         self,
@@ -296,7 +319,8 @@ class WebSocketWatcher:
         websocket: websockets.server.WebSocketServerProtocol,
     ) -> None:
         try:
-            async for change in awatch(self.log_path):
+            # Very important: this hangs in shutdown unless we pass ``self.stop_event`` to the watcher.
+            async for change in awatch(self.log_path, stop_event=self.stop_event):  # type: ignore
                 print(change)
                 await websocket.send("new data")
         except websockets.exceptions.WebSocketException:
@@ -309,20 +333,11 @@ class WebSocketWatcher:
         self.loop = asyncio.get_running_loop()
         self.stop_event = asyncio.Event()
 
+        # Start the server; per the `docs <https://websockets.readthedocs.io/en/stable/reference/server.html#websockets.server.serve>`__, exiting this context manager shuts it down.
         async with websockets.serve(self.update, "0.0.0.0", 8765):  # type:ignore
-            # Run until a stop is requested. Makes no sense to me...
-            print("Waiting for event...")
+            # Run the server until a stop is requested.
             await self.stop_event.wait()
-            print("Event wait finished.")
         print("Websocket server shutting down...")
-
-    # Shut down the websocket / watcher from another thread.
-    def stop(self):
-        print("Setting event...")
-        self.loop.call_soon_threadsafe(self.stop_event.set)
-        print("Event set. Joining thread...")
-        self.thread.join()
-        print("Join finished.")
 
 
 # Main
@@ -350,6 +365,7 @@ def main(argv):
     print(f"Logging iPerf3 data to {log_dir}.")
     log_dir.mkdir(exist_ok=True)
 
+    # Start the webserver and the watcher/websocket.
     start_iperf3_servers(num_servers)
     wsw = WebSocketWatcher(log_dir)
     wsw.start()
