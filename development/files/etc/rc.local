@@ -21,7 +21,8 @@ if [ "$_IP" ]; then
 fi
 
 # Start an iPerf3 webserver.
+##export PATH="/home/pi/.local/bin:$PATH"
 cd /home/pi/NIST-UAS-3.2/webperf3
-poetry run webperf3 10 &
+sudo /home/pi/.local/bin/poetry run python3 -m webperf3 10 &
 
 exit 0

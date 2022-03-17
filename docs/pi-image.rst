@@ -13,16 +13,16 @@ Manual configuration: these steps apply to both the production and development c
 
     #.  Localisation->WLAN country-> US
     #.  Localisation->Timezone->Chicago
-    #.  Keyboard 104, US, default
+    #.  Localisation->Keyboard (auto-sets to 104 keys, US)
     #.  Enable SSH
 
 #.  Run::
 
-        sudo apt get -y git
+        sudo apt install -y git python3-venv iperf3
         curl -sSL https://install.python-poetry.org | python3 -
         git clone https://github.com/bjones1/NIST-UAS-3.2.git
         cd NIST-UAS-3.2/webperf3
-        poetry update
+        sudo /home/pi/.local/bin/poetry update --no-dev
 
 After this, follow the steps in the production or development configuration.
 
@@ -34,9 +34,9 @@ This statically assigns addresses to both the Ethernet and Wifi sides of the Pi;
 #.  Run::
 
         sudo apt update
-        sudo apt upgrade
-        sudo apt install dnsmasq hostapd
-        cp -r production/files /
+        sudo apt upgrade -y
+        sudo apt install -y dnsmasq hostapd iperf3
+        sudo cp -r production/files/* /
 
 .. toctree::
     :maxdepth: 2
