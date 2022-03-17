@@ -1,8 +1,8 @@
 #!/bin/sh -e
 #
-# ****************************************************************
-# |docname| - Install files and set up the Pi for development mode
-# ****************************************************************
+# ***************************************************************
+# |docname| - Install files and set up the Pi for production mode
+# ***************************************************************
 # This must be run from the directory containing this file.
 #
 # Upgrade Linux.
@@ -16,12 +16,9 @@ git clone https://github.com/bjones1/NIST-UAS-3.2.git
 cd NIST-UAS-3.2/webperf3
 sudo /home/pi/.local/bin/poetry update --no-dev
 
-# Set up networking. This was taken from |pi-bridge|.
-sudo apt install -y hostapd
-sudo systemctl unmask hostapd
-sudo systemctl enable hostapd
-sudo cp -r files/* /
-sudo systemctl enable systemd-networkd
+# Set up networking.
+sudo apt install -y dnsmasq hostapd
+sudo cp -r production/files/* /
 sudo rfkill unblock wlan
 
 # Reboot for changes to take effect.
