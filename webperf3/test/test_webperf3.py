@@ -51,3 +51,12 @@ def test_3():
     assert extract_iperf3_performance(d) == (None, None, None)
     d = read_iperf3_json_log(test_local / "error_1_iperf3_output.json")
     assert extract_iperf3_performance(d) == (None, None, None)
+
+
+def test_4():
+    d = read_iperf3_json_log(test_local / "no_bidir_iperf3_output.json")
+    assert extract_iperf3_performance(d) == (
+        None,
+        39130143.4457638,
+        None,
+    )

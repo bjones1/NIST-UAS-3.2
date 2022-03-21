@@ -102,13 +102,14 @@ def extract_iperf3_performance(
     Optional[str],
 ]:
     # Extract the relevant data from the JSON file.
+    send_bps = None
+    receive_bps = None
     try:
         se = iperf3_log_data["end"]["streams"]
-        send_bps = se[1]["sender"]["bits_per_second"]
         receive_bps = se[0]["receiver"]["bits_per_second"]
-    except KeyError:
-        send_bps = None
-        receive_bps = None
+        send_bps = se[1]["sender"]["bits_per_second"]
+    except (KeyError, IndexError):
+        pass
     return send_bps, receive_bps, iperf3_log_data.get("extra_data")
 
 
