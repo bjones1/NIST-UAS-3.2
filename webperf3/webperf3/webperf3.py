@@ -7,6 +7,11 @@
 # - A webserver_, which reports iPerf3 results.
 # - A `websocket and watcher`_, which looks for changes to the iPerf3 log files. A change causes the websocket to refresh the client, displaying any new results.
 #
+# Possible extensions:
+#
+# - Provide a timestamp on when a given measurement was collected. The iPerf3 JSON data includes one.
+# - Provide a way to clear the table of results. This requires server-side code -- simply write ``{}`` to the end of all log files, then refresh.
+#
 # .. contents:: Table of Contents
 #   :local:
 #   :depth: 2
