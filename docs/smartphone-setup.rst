@@ -25,7 +25,13 @@ iOS
 #.  Install the iPerf3 Wifi Speed Test app from the Apple app store.
 #.  Connect the device the Pi via WiFi (SSID: ``PiNet``, password ``UAS3Chal``).
 #.  Verify that an IP in the range 192.168.3.1xx was assigned.
-#.  Open the app. Select a server address of 192.168.3.1 and a test duration of 10s.
+#.  Open the app. Select:
+
+    #.  A server address of 192.168.3.1;
+    #.  Set streams to 2.
+    #.  A test duration of 10s.
+    #.  The iOS client doesn't support bidirectional mode; test first with a transmit mode of download, then test again with a transmit mode of upload.
+
 #.  Press start.
 
 
