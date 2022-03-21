@@ -3,7 +3,7 @@
 # **********************************************
 # |docname| - Prepare for futher Pi installation
 # **********************************************
-# Run this script first; next, run either `production/install.sh` or `development/install.sh` to complete Pi setup.
+# Run this script using `curl -sSL https://raw.githubusercontent.com/bjones1/NIST-UAS-3.2/main/install-prep.sh | bash -`. Next, run either `production/install.sh` or `development/install.sh` to complete Pi setup.
 #
 # Upgrade Linux.
 sudo apt update

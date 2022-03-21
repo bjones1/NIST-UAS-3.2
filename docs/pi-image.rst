@@ -16,14 +16,14 @@ Manual configuration: these steps apply to both the production and development c
     #.  Localisation->Keyboard (auto-sets to 104 keys, US)
     #.  Enable SSH
 
-Next, run:
+Next, run
 
 .. toctree::
     :maxdepth: 2
 
     ../install-prep.sh
 
-Finally, follow the steps for the production or development configuration below.
+Click on the link above for instruction on how to run it. Finally, follow the steps for the production or development configuration below.
 
 
 Pi production configuration
