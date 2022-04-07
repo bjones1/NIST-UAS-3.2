@@ -263,8 +263,7 @@ def home_page():
             </head>
             <body>
                 <h1>iPerf3 performance measurements</h1>
-                <table id="perf-table">
-                </table>
+                <table id="perf-table"></table>
                 <div>
                     Status: <span id="is_connected">waiting</span>.
                     Last update: <span id="last-update">Unknown</span>.
@@ -284,16 +283,15 @@ def home_page():
 @route("/table")
 def create_table():
     # Look at logs to get current iPerf3 data.
-    iperf3_data = []
+    iperf3_data = [None] * num_servers
     for index in range(num_servers):
         try:
-            d = extract_iperf3_performance(
+            iperf3_data[index] = extract_iperf3_performance(
                 read_iperf3_json_log(iperf3_log_file_name(index))
             )
         # If there's no log file yet, add a blank entry.
         except FileNotFoundError:
-            d = [None, None, None, None]
-        iperf3_data.append(d)
+            pass
 
     return json.dumps(iperf3_data)
 
