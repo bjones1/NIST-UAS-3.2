@@ -39,7 +39,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Third-party imports
 # ^^^^^^^^^^^^^^^^^^^
-from bottle import LocalResponse, route, request, response, run, static_file, template
+from bottle import response, route, run, static_file
 from watchgod import awatch
 import websockets
 import websockets.server
@@ -256,7 +256,7 @@ def home_page():
                         border: 1px solid white;
                         border-collapse: collapse;
                     }
-                    th, td {
+                    tr {
                         background-color: #96D4D4;
                     }
                 </style>
@@ -267,10 +267,12 @@ def home_page():
                 </table>
                 <div>
                     Status: <span id="is_connected">waiting</span>.
+                    Last update: <span id="last-update">Unknown</span>.
                 </div>
                 <br />
                 <div>
-                    <a href="csv">Download all log data</a>
+                    <button type="button" onclick="update_table();">Update now</button>
+                    <button type="button" onclick="location.href='/csv'">Download all log data</button>
                 </div>
             </body>
         </html>
@@ -281,15 +283,6 @@ def home_page():
 # Create the table of performance results.
 @route("/table")
 def create_table():
-    # Previous iPerf3 data is stored in a cookie.
-    try:
-        prev_iperf3_data = json.loads(request.cookies.iperf3_data)
-        assert (
-            isinstance(prev_iperf3_data, list) and len(prev_iperf3_data) == num_servers
-        )
-    except (json.decoder.JSONDecodeError, AssertionError):
-        prev_iperf3_data = [None] * num_servers
-
     # Look at logs to get current iPerf3 data.
     iperf3_data = []
     for index in range(num_servers):
@@ -302,54 +295,18 @@ def create_table():
             d = [None, None, None, None]
         iperf3_data.append(d)
 
-    # Save it for the next change detection.
-    response.set_cookie("iperf3_data", json.dumps(iperf3_data))
-
-    # Send the webpage. To get JS to execute when assigned as ``innerHTML``, see `SO <https://stackoverflow.com/questions/2592092/executing-script-elements-inserted-with-innerhtml#comment97318657_3714367>`__.
-    return template(
-        dedent(
-            """
-            <tr>
-                <th>Port</th>
-                <th style="width: 15rem">Name</th>
-                <th style="width: 10rem">Timestamp</th>
-                <th style="width: 10rem">Send rate (bps)</th>
-                <th style="width: 10rem">Receive rate (bps)</th>
-                <th>New</th>
-            </tr>
-
-            % for index in range(num_servers):
-                % # Use ``list()`` since prev_iperf3_data is a list, while iperf3_data is a tuple.
-                % d = list(iperf3_data[index])
-                <tr>
-                    <td>{{index + starting_port}}</td>
-                    <td>{{d[3] or ""}}</td>
-                    <td><style onload='this.parentNode.innerHTML = formatDate({{d[0] or ""}});'></style></td>
-                    <td>{{"" if d[1] is None else "{0:,}".format(round(d[1]))}}</td>
-                    <td>{{"" if d[2] is None else "{0:,}".format(round(d[2]))}}</td>
-                    <td>{{"X" if d != prev_iperf3_data[index] else ""}}
-                </tr>
-            % end
-            """
-        ),
-        iperf3_data=iperf3_data,
-        num_servers=num_servers,
-        prev_iperf3_data=prev_iperf3_data,
-        starting_port=starting_port,
-    )
+    return json.dumps(iperf3_data)
 
 
 # CSV download
 # ------------
 @route("/csv")
 def download_csv():
-    return LocalResponse(
-        body=export_csv(num_servers),
-        headers={
-            "Content-Disposition": "attachment; filename=iperf3_log.csv",
-            "Content-Type": "text/csv",
-        },
-    )
+    # See the `bottle tutorial <https://bottlepy.org/docs/dev/tutorial.html#generating-content>`_ under "Changing the Default Encoding".
+    response.content_type = "text/csv"
+    # See the `Response object <https://bottlepy.org/docs/dev/tutorial.html#tutorial-response>`_.
+    response.set_header("content_disposition", "attachment; filename=iperf3_log.csv")
+    return export_csv(num_servers)
 
 
 # Static files
@@ -404,6 +361,7 @@ class WebSocketWatcher:
                 await self.update_event.wait()
 
                 # Look for shutdown.
+                assert isinstance(self.stop_event, asyncio.Event)
                 if self.stop_event.is_set():
                     break
 

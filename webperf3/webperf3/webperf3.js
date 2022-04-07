@@ -6,22 +6,85 @@
 // Misc
 // ====
 // Convert a date in seconds to a string.
-let formatDate = (datesecs) =>
-    datesecs === undefined
-        ? ""
-        : new Date(datesecs * 1000).toLocaleTimeString();
-//
+const formatDate = (datesecs) =>
+    datesecs ? new Date(datesecs * 1000).toLocaleTimeString() : "";
+
+const formatRate = (bps) =>
+    bps ? Number(Math.round(bps)).toLocaleString() : "";
+
+// Compare two arrays with scalar contents from `SO <https://stackoverflow.com/a/19746771/16038919>`__. Insert snarky comment about JavaScript as a programming language here.
+const scalar_array_equals = (array1, array2) =>
+    array1.length === array2.length &&
+    array1.every((value, index) => value === array2[index]);
+
+// Fetch an updated table from the server.
+function update_table() {
+    fetch("/table")
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error("Network response was not OK");
+            }
+            return response.json();
+        })
+        .then((iperf3_data) => {
+            // Create the new table.
+            let old_iperf3_data = [];
+            try {
+                old_iperf3_data = JSON.parse(
+                    window.localStorage.getItem("iperf3-data")
+                );
+            } catch (e) {}
+            let html = `
+<tr>
+    <th>Port</th>
+    <th style="width: 15rem">Name</th>
+    <th style="width: 10rem">Timestamp</th>
+    <th style="width: 10rem">Send rate (bps)</th>
+    <th style="width: 10rem">Receive rate (bps)</th>
+</tr>`;
+            iperf3_data.forEach((row, index) => {
+                html += `
+<tr ${
+                    scalar_array_equals(old_iperf3_data[index], row)
+                        ? ""
+                        : "style='background-color:lightcoral;'"
+                }>
+    <td>${index + 5201}</td>
+    <td>${row[3] || ""}</td>
+    <td>${formatDate(row[0])}</td>
+    <td>${formatRate(row[1])}</td>
+    <td>${formatRate(row[2])}</td>
+</tr>`;
+            });
+            window.localStorage.setItem(
+                "iperf3-data",
+                JSON.stringify(iperf3_data)
+            );
+
+            // Update the resulting HTML.
+            document.getElementById("perf-table").innerHTML = html;
+            document.getElementById("last-update").innerHTML =
+                new Date().toLocaleTimeString();
+        })
+        .catch((error) =>
+            console.error(
+                "There has been a problem with your fetch operation:",
+                error
+            )
+        );
+}
+
 // Websocket
 // =========
 // A function to update the connection status of the webpage.
-let setIsConnected = (text, backgroundColor) => {
+const setIsConnected = (text, backgroundColor) => {
     let ic = document.getElementById("is_connected");
     ic.textContent = text;
     ic.style.backgroundColor = backgroundColor;
 };
 
 // Create a websocket to communicate with the CodeChat Server.
-let ws = new ReconnectingWebSocket(`ws://${window.location.hostname}:8765`);
+const ws = new ReconnectingWebSocket(`ws://${window.location.hostname}:8765`);
 
 // When connected, update the webpage's connection status.
 ws.onopen = () => {
@@ -43,23 +106,7 @@ ws.onclose = (event) => {
 // Handle messages, which is always new contents for the perf table.
 ws.onmessage = (event) => {
     if (event.data === "new data") {
-        fetch("/table")
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error("Network response was not OK");
-                }
-                return response.text();
-            })
-            .then(
-                (html) =>
-                    (document.getElementById("perf-table").innerHTML = html)
-            )
-            .catch((error) =>
-                console.error(
-                    "There has been a problem with your fetch operation:",
-                    error
-                )
-            );
+        update_table();
     } else {
         console.error(
             `webperf3 client: websocket received unknown message ${event.data}`
