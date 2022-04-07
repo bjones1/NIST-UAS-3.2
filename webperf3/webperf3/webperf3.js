@@ -40,10 +40,26 @@ ws.onclose = (event) => {
     setIsConnected("offline", "salmon");
 };
 
-// Handle messages.
+// Handle messages, which is always new contents for the perf table.
 ws.onmessage = (event) => {
     if (event.data === "new data") {
-        location.reload();
+        fetch("/table")
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error("Network response was not OK");
+                }
+                return response.text();
+            })
+            .then(
+                (html) =>
+                    (document.getElementById("perf-table").innerHTML = html)
+            )
+            .catch((error) =>
+                console.error(
+                    "There has been a problem with your fetch operation:",
+                    error
+                )
+            );
     } else {
         console.error(
             `webperf3 client: websocket received unknown message ${event.data}`

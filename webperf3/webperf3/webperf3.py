@@ -201,8 +201,8 @@ def export_csv(
     data = [el for el in read_all_iperf3_logs(num_servers) if el[1]]
     # Sort by the timestamp, which is element 1 of each tuple in the list.
     data.sort(key=lambda l: l[1])  # type: ignore
-    # Conver the time to `excel's format <https://exceljet.net/excel-functions/excel-date-function>`_, including moving from GMT to local time. Note that ``DATE(1970,1,1)`` == 25569.
-    data = [(el[0], el[4], (el[1] - time.timezone) / 86400 + 25569, el[2], el[3]) for el in data]  # type: ignore
+    # Convert the time to `excel's format <https://exceljet.net/excel-functions/excel-date-function>`_, including moving from GMT to local time. Note that ``DATE(1970,1,1)`` == 25569.
+    data = [(el[0], el[4], (el[1] + time.localtime(el[1]).tm_gmtoff) / 86400 + 25569, el[2], el[3]) for el in data]  # type: ignore
 
     # Write it out
     s = StringIO()
@@ -238,7 +238,49 @@ def start_iperf3_servers(
 # ---------
 # This is the main web page which displays iPerf3 stats.
 @route("/")
-def report_stats():
+def home_page():
+    return dedent(
+        """
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <meta charset="utf-8">
+                <title>iPerf3 performance measurements</title>
+
+                <!-- Use the ``ReconnectingWebsocket`` to automatically reconnect a websocket when the network connection drops. -->
+                <script src="/static/ReconnectingWebsocket.js?v=1"></script>
+                <script src="/static/webperf3.js?v=1"></script>
+
+                <style>
+                    table, th, td {
+                        border: 1px solid white;
+                        border-collapse: collapse;
+                    }
+                    th, td {
+                        background-color: #96D4D4;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>iPerf3 performance measurements</h1>
+                <table id="perf-table">
+                </table>
+                <div>
+                    Status: <span id="is_connected">waiting</span>.
+                </div>
+                <br />
+                <div>
+                    <a href="csv">Download all log data</a>
+                </div>
+            </body>
+        </html>
+        """
+    )
+
+
+# Create the table of performance results.
+@route("/table")
+def create_table():
     # Previous iPerf3 data is stored in a cookie.
     try:
         prev_iperf3_data = json.loads(request.cookies.iperf3_data)
@@ -263,64 +305,31 @@ def report_stats():
     # Save it for the next change detection.
     response.set_cookie("iperf3_data", json.dumps(iperf3_data))
 
-    # Send the webpage.
+    # Send the webpage. To get JS to execute when assigned as ``innerHTML``, see `SO <https://stackoverflow.com/questions/2592092/executing-script-elements-inserted-with-innerhtml#comment97318657_3714367>`__.
     return template(
         dedent(
             """
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>iPerf3 performance measurements</title>
+            <tr>
+                <th>Port</th>
+                <th style="width: 15rem">Name</th>
+                <th style="width: 10rem">Timestamp</th>
+                <th style="width: 10rem">Send rate (bps)</th>
+                <th style="width: 10rem">Receive rate (bps)</th>
+                <th>New</th>
+            </tr>
 
-                    <!-- Use the ``ReconnectingWebsocket`` to automatically reconnect a websocket when the network connection drops. -->
-                    <script src="/static/ReconnectingWebsocket.js?v=1"></script>
-                    <script src="/static/webperf3.js?v=1"></script>
-
-                    <style>
-                        table, th, td {
-                            border: 1px solid white;
-                            border-collapse: collapse;
-                        }
-                        th, td {
-                            background-color: #96D4D4;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h1>iPerf3 performance measurements</h1>
-                    <table>
-                        <tr>
-                            <th>Port</th>
-                            <th style="width: 15rem">Name</th>
-                            <th style="width: 10rem">Timestamp</th>
-                            <th style="width: 10rem">Send rate (bps)</th>
-                            <th style="width: 10rem">Receive rate (bps)</th>
-                            <th>New</th>
-                        </tr>
-
-                        % for index in range(num_servers):
-                            % # Use ``list()`` since prev_iperf3_data is a list, while iperf3_data is a tuple.
-                            % d = list(iperf3_data[index])
-                            <tr>
-                                <td>{{index + starting_port}}</td>
-                                <td>{{d[3] or ""}}</td>
-                                <td><script>document.write(formatDate({{d[0] or ""}}));</script></td>
-                                <td>{{"" if d[1] is None else "{0:,}".format(round(d[1]))}}</td>
-                                <td>{{"" if d[2] is None else "{0:,}".format(round(d[2]))}}</td>
-                                <td>{{"X" if d != prev_iperf3_data[index] else ""}}
-                            </tr>
-                        % end
-                    </table>
-                    <div>
-                        Status: <span id="is_connected">waiting</span>.
-                    </div>
-                    <br />
-                    <div>
-                        <a href="csv">Download all log data</a>
-                    </div>
-                </body>
-            </html>
+            % for index in range(num_servers):
+                % # Use ``list()`` since prev_iperf3_data is a list, while iperf3_data is a tuple.
+                % d = list(iperf3_data[index])
+                <tr>
+                    <td>{{index + starting_port}}</td>
+                    <td>{{d[3] or ""}}</td>
+                    <td><style onload='this.parentNode.innerHTML = formatDate({{d[0] or ""}});'></style></td>
+                    <td>{{"" if d[1] is None else "{0:,}".format(round(d[1]))}}</td>
+                    <td>{{"" if d[2] is None else "{0:,}".format(round(d[2]))}}</td>
+                    <td>{{"X" if d != prev_iperf3_data[index] else ""}}
+                </tr>
+            % end
             """
         ),
         iperf3_data=iperf3_data,
@@ -386,11 +395,18 @@ class WebSocketWatcher:
         websocket: websockets.server.WebSocketServerProtocol,
     ) -> None:
         try:
-            # Wait until the watcher signals a change.
-            assert isinstance(self.update_event, asyncio.Event)
-            await self.update_event.wait()
-            # Tell this client to refresh. Exit after this, since the refresh causes it to close the connection. TODO: just send the updated table instead.
-            await websocket.send("new data")
+            while True:
+                # Send the table when the page first loads, or after new data is available.
+                await websocket.send("new data")
+
+                # Wait until the watcher signals a change.
+                assert isinstance(self.update_event, asyncio.Event)
+                await self.update_event.wait()
+
+                # Look for shutdown.
+                if self.stop_event.is_set():
+                    break
+
         except websockets.exceptions.WebSocketException:
             # Just allow the socket to close.
             pass
