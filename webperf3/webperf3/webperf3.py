@@ -27,16 +27,19 @@
 # Standard library
 # ^^^^^^^^^^^^^^^^
 import asyncio
+import csv
+from io import StringIO
 import json
 from pathlib import Path
 import sys
 from textwrap import dedent
 from threading import Thread
+import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Third-party imports
 # ^^^^^^^^^^^^^^^^^^^
-from bottle import route, request, response, run, static_file, template
+from bottle import LocalResponse, route, request, response, run, static_file, template
 from watchgod import awatch
 import websockets
 import websockets.server
@@ -94,6 +97,7 @@ def read_iperf3_json_log(
         return {}
 
 
+# Read all entries in a JSON-like log data from iPerf3, returning them as an array of Python data structures.
 def read_all_iperf3_json_log(
     # See log_path_.
     log_path: Union[Path, str],
@@ -101,18 +105,23 @@ def read_all_iperf3_json_log(
 ) -> List[Dict[str, Any]]:
     # See comments in ``read_iperf3_json_log``.
     pseudo_json = Path(log_path).read_text()
+
     # Split the data based the beginning/end of JSON data.
-    split_json = pseudo_json.split("\n}\n{")
-    json_arr: List[Dict[str, Any]] = [{}] * len(split_json)
-    for index, json_fragment in enumerate(split_json):
-        # Patch up JSON by replacing the missing curly brackets then interpret.
-        json_fragment += "}"
-        if index:
-            json_fragment = "{" + json_fragment
+    json_arr: List[Dict[str, Any]] = []
+    start = 0
+    while True:
+        # Find the end of the current JSON block; if not found, go to the end of the string.
+        end = pseudo_json.find("\n{", start) + 1 or len(pseudo_json)
+        # Interpret this chunk as JSON.
+        json_fragment = pseudo_json[start:end]
         try:
-            json_arr[index] = json.loads(json_fragment)
+            json_arr.append(json.loads(json_fragment))
         except json.decoder.JSONDecodeError:
             pass
+        # Move to the next chunk, or exit after the last chunk.
+        start = end
+        if start == len(pseudo_json):
+            break
 
     return json_arr
 
@@ -158,6 +167,52 @@ def iperf3_log_file_name(
         if is_win
         else Path(f"/home/pi/iperf3-logs/port-{server_index}.json")
     )
+
+
+# Export all data
+# ---------------
+def read_all_iperf3_logs(
+    # _`num_servers`: The number of servers to read data from; must be a non-negative number.
+    num_servers: int,
+) -> List[Tuple[int, Optional[int], Optional[float], Optional[float], Optional[str]]]:
+    iperf3_data = []
+    for server_index in range(num_servers):
+        log_file_name = iperf3_log_file_name(server_index)
+        log_data = read_all_iperf3_json_log(log_file_name)
+        port = server_index + starting_port
+        iperf3_data += [
+            (port,) + extract_iperf3_performance(json_log) for json_log in log_data
+        ]
+    return iperf3_data
+
+
+def export_csv(
+    # See num_servers_.
+    num_servers: int,
+    # A string containing of the resulting CSV data.
+) -> str:
+    # Get the data to write; exclude blank entries. Indices in an element of data are:
+    #
+    # 0.    Port
+    # 1.    Timestamp
+    # 2.    Send bps
+    # 3.    Receive bps
+    # 4.    Name
+    data = [el for el in read_all_iperf3_logs(num_servers) if el[1]]
+    # Sort by the timestamp, which is element 1 of each tuple in the list.
+    data.sort(key=lambda l: l[1])  # type: ignore
+    # Conver the time to `excel's format <https://exceljet.net/excel-functions/excel-date-function>`_, including moving from GMT to local time. Note that ``DATE(1970,1,1)`` == 25569.
+    data = [(el[0], el[4], (el[1] - time.timezone) / 86400 + 25569, el[2], el[3]) for el in data]  # type: ignore
+
+    # Write it out
+    s = StringIO()
+    writer = csv.writer(s)
+    writer.writerow(
+        ["Port", "Name", "Timestamp", "Send rate (bps)", "Receive rate (bps)"]
+    )
+    writer.writerows(data)
+
+    return s.getvalue()
 
 
 # Start iPerf3 servers
@@ -260,6 +315,10 @@ def report_stats():
                     <div>
                         Status: <span id="is_connected">waiting</span>.
                     </div>
+                    <br />
+                    <div>
+                        <a href="csv">Download all log data</a>
+                    </div>
                 </body>
             </html>
             """
@@ -268,6 +327,19 @@ def report_stats():
         num_servers=num_servers,
         prev_iperf3_data=prev_iperf3_data,
         starting_port=starting_port,
+    )
+
+
+# CSV download
+# ------------
+@route("/csv")
+def download_csv():
+    return LocalResponse(
+        body=export_csv(num_servers),
+        headers={
+            "Content-Disposition": "attachment; filename=iperf3_log.csv",
+            "Content-Type": "text/csv",
+        },
     )
 
 
@@ -315,6 +387,7 @@ class WebSocketWatcher:
     ) -> None:
         try:
             # Wait until the watcher signals a change.
+            assert isinstance(self.update_event, asyncio.Event)
             await self.update_event.wait()
             # Tell this client to refresh. Exit after this, since the refresh causes it to close the connection. TODO: just send the updated table instead.
             await websocket.send("new data")
@@ -324,6 +397,7 @@ class WebSocketWatcher:
         print("Websocket connection closed.")
 
     async def watcher(self) -> None:
+        assert isinstance(self.update_event, asyncio.Event)
         # Very important: this hangs in shutdown unless we pass ``self.stop_event`` to the watcher.
         async for change in awatch(self.log_path, stop_event=self.stop_event):  # type: ignore
             print(change)
