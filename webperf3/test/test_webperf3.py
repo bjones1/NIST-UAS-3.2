@@ -31,6 +31,7 @@ test_local = Path(__file__).resolve().parent
 def test_1():
     d = read_iperf3_json_log(test_local / "single_iperf3_output.json")
     assert extract_iperf3_performance(d) == (
+        1647312652,
         6218445861.06448,
         5588500339.1611471,
         "UE name 2 here",
@@ -40,6 +41,7 @@ def test_1():
 def test_2():
     d = read_iperf3_json_log(test_local / "multiple_iperf3_output.json")
     assert extract_iperf3_performance(d) == (
+        1647312637,
         5930752506.02558,
         5060954075.1963663,
         "UE name 1 here",
@@ -48,14 +50,15 @@ def test_2():
 
 def test_3():
     d = read_iperf3_json_log(test_local / "error_0_iperf3_output.json")
-    assert extract_iperf3_performance(d) == (None, None, None)
+    assert extract_iperf3_performance(d) == (None, None, None, None)
     d = read_iperf3_json_log(test_local / "error_1_iperf3_output.json")
-    assert extract_iperf3_performance(d) == (None, None, None)
+    assert extract_iperf3_performance(d) == (None, None, None, None)
 
 
 def test_4():
     d = read_iperf3_json_log(test_local / "no_bidir_iperf3_output.json")
     assert extract_iperf3_performance(d) == (
+        1647873959,
         None,
         39130143.4457638,
         None,

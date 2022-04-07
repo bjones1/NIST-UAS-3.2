@@ -9,8 +9,8 @@
 #
 # Possible extensions:
 #
-# - Provide a timestamp on when a given measurement was collected. The iPerf3 JSON data includes one.
 # - Provide a way to clear the table of results. This requires server-side code -- simply write ``{}`` to the end of all log files, then refresh.
+# - Kill all the iperf3 servers when this program exits.
 #
 # .. contents:: Table of Contents
 #   :local:
@@ -32,7 +32,7 @@ from pathlib import Path
 import sys
 from textwrap import dedent
 from threading import Thread
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Third-party imports
 # ^^^^^^^^^^^^^^^^^^^
@@ -49,6 +49,8 @@ from .ci_utils import is_win, xqt
 # -------
 # The number of iPerf3 servers in use by this program.
 num_servers = None
+# The first port (which iPerf3 defaults to) to use when starting servers.
+starting_port = 5201
 
 
 # iPerf3 utilities
@@ -59,7 +61,7 @@ num_servers = None
 # ----------------
 # Read the last entry in a JSON-like log data from iPerf3, returning it as a Python data structure.
 def read_iperf3_json_log(
-    # The Path (or its equivalent string) of the log file to read.
+    # _`log_path`: the Path (or its equivalent string) of the log file to read.
     log_path: Union[Path, str],
     # Returns the last iPerf3 result; this is a huge struct of iPerf3 data.
 ) -> Dict[str, Any]:
@@ -86,11 +88,33 @@ def read_iperf3_json_log(
 
     # Errors produce confused JSON intermixed with error messages.
     try:
-
         json_str = pseudo_json[index:]
         return json.loads(json_str)
     except json.decoder.JSONDecodeError:
         return {}
+
+
+def read_all_iperf3_json_log(
+    # See log_path_.
+    log_path: Union[Path, str],
+    # Returns an array of iPerf3 results.
+) -> List[Dict[str, Any]]:
+    # See comments in ``read_iperf3_json_log``.
+    pseudo_json = Path(log_path).read_text()
+    # Split the data based the beginning/end of JSON data.
+    split_json = pseudo_json.split("\n}\n{")
+    json_arr: List[Dict[str, Any]] = [{}] * len(split_json)
+    for index, json_fragment in enumerate(split_json):
+        # Patch up JSON by replacing the missing curly brackets then interpret.
+        json_fragment += "}"
+        if index:
+            json_fragment = "{" + json_fragment
+        try:
+            json_arr[index] = json.loads(json_fragment)
+        except json.decoder.JSONDecodeError:
+            pass
+
+    return json_arr
 
 
 # Extract iPerf3 data rates (bps) from its log data
@@ -99,23 +123,27 @@ def extract_iperf3_performance(
     # The iPerf3 log data returned by `read iPerf3 logs`_.
     iperf3_log_data: Dict[str, Any],
 ) -> Tuple[
+    # The timestamp of this performance measurement, in seconds sine the epoch.
+    Optional[int],
     # The average bits per second sent by the server.
-    float,
+    Optional[float],
     # The average bits per second received by the server.
-    float,
+    Optional[float],
     # The extra data provided by the client, if present; ``None`` otherwise.
     Optional[str],
 ]:
     # Extract the relevant data from the JSON file.
+    timestamp = None
     send_bps = None
     receive_bps = None
     try:
+        timestamp = iperf3_log_data["start"]["timestamp"]["timesecs"]
         se = iperf3_log_data["end"]["streams"]
         receive_bps = se[0]["receiver"]["bits_per_second"]
         send_bps = se[1]["sender"]["bits_per_second"]
     except (KeyError, IndexError):
         pass
-    return send_bps, receive_bps, iperf3_log_data.get("extra_data")
+    return timestamp, send_bps, receive_bps, iperf3_log_data.get("extra_data")
 
 
 # Name iPerf3 log files
@@ -140,8 +168,6 @@ def start_iperf3_servers(
     num_servers: int,
 ) -> None:
 
-    # The first port (which iPerf3 defaults to) to use when starting servers.
-    starting_port = 5201
     for server_index in range(num_servers):
         cmd = (
             f"iperf3 --server --json --port {server_index + starting_port} "
@@ -176,13 +202,13 @@ def report_stats():
             )
         # If there's no log file yet, add a blank entry.
         except FileNotFoundError:
-            d = [None, None, None]
+            d = [None, None, None, None]
         iperf3_data.append(d)
 
     # Save it for the next change detection.
     response.set_cookie("iperf3_data", json.dumps(iperf3_data))
 
-    # Send the webpage. TODO: split this into separate JS, CSS, and an HTML template, so that a reload takes a bit less time/data.
+    # Send the webpage.
     return template(
         dedent(
             """
@@ -194,48 +220,7 @@ def report_stats():
 
                     <!-- Use the ``ReconnectingWebsocket`` to automatically reconnect a websocket when the network connection drops. -->
                     <script src="/static/ReconnectingWebsocket.js?v=1"></script>
-
-                    <script>
-                        let setIsConnected = (text, backgroundColor) => {
-                            let ic = document.getElementById("is_connected");
-                            ic.textContent = text;
-                            ic.style.backgroundColor = backgroundColor;
-                        };
-                        // Create a websocket to communicate with the CodeChat Server.
-                        let ws = new ReconnectingWebSocket(
-                            `ws://${window.location.hostname}:8765`
-                        );
-
-                        // When connected, update the webpage's connection status.
-                        ws.onopen = () => {
-                            console.log(
-                                "webperf3 client: websocket to webperf3 server open."
-                            );
-                            setIsConnected("online", "white")
-                        };
-
-                        // Provide logging to help track down errors.
-                        ws.onerror = (event) => {
-                            console.error(`webperf3 client: websocket error ${event}.`);
-                        };
-
-                        // When disconnected, update the webpage's connection status.
-                        ws.onclose = (event) => {
-                            console.log(
-                                `webperf3 client: websocket closed by event ${event}.`
-                            );
-                            setIsConnected("offline", "salmon")
-                        };
-
-                        // Handle messages.
-                        ws.onmessage = (event) => {
-                            if (event.data === "new data") {
-                                location.reload();
-                            } else {
-                                console.error(`webperf3 client: websocket received unknown message ${event.data}`);
-                            }
-                        }
-                    </script>
+                    <script src="/static/webperf3.js?v=1"></script>
 
                     <style>
                         table, th, td {
@@ -251,8 +236,9 @@ def report_stats():
                     <h1>iPerf3 performance measurements</h1>
                     <table>
                         <tr>
-                            <th>Index</th>
-                            <th style="width: 20rem">Name</th>
+                            <th>Port</th>
+                            <th style="width: 15rem">Name</th>
+                            <th style="width: 10rem">Timestamp</th>
                             <th style="width: 10rem">Send rate (bps)</th>
                             <th style="width: 10rem">Receive rate (bps)</th>
                             <th>New</th>
@@ -262,10 +248,11 @@ def report_stats():
                             % # Use ``list()`` since prev_iperf3_data is a list, while iperf3_data is a tuple.
                             % d = list(iperf3_data[index])
                             <tr>
-                                <td>{{index + 1}}</td>
-                                <td>{{d[2] or ""}}</td>
-                                <td>{{"" if d[0] is None else "{0:,}".format(round(d[0]))}}</td>
+                                <td>{{index + starting_port}}</td>
+                                <td>{{d[3] or ""}}</td>
+                                <td><script>document.write(formatDate({{d[0] or ""}}));</script></td>
                                 <td>{{"" if d[1] is None else "{0:,}".format(round(d[1]))}}</td>
+                                <td>{{"" if d[2] is None else "{0:,}".format(round(d[2]))}}</td>
                                 <td>{{"X" if d != prev_iperf3_data[index] else ""}}
                             </tr>
                         % end
@@ -277,9 +264,10 @@ def report_stats():
             </html>
             """
         ),
-        num_servers=num_servers,
         iperf3_data=iperf3_data,
+        num_servers=num_servers,
         prev_iperf3_data=prev_iperf3_data,
+        starting_port=starting_port,
     )
 
 
@@ -295,8 +283,8 @@ def server_static(filename):
 # =====================
 # The watcher monitors the log directory, sending a message over a websocket to the client when the client needs to be updated.
 class WebSocketWatcher:
-# Startup / shutdown
-# ------------------
+    # Startup / shutdown
+    # ------------------
     def __init__(
         self,
         # A Path to the directory containing logs.
@@ -304,6 +292,7 @@ class WebSocketWatcher:
     ):
         self.log_path = log_path
         self.stop_event: Optional[asyncio.Event] = None
+        self.update_event: Optional[asyncio.Event] = None
         self.thread = None
         self.loop: Optional[asyncio.AbstractEventLoop] = None
 
@@ -316,8 +305,8 @@ class WebSocketWatcher:
         self.loop.call_soon_threadsafe(self.stop_event.set)
         self.thread.join()
 
-# Websocket and watcher core
-# --------------------------
+    # Websocket and watcher core
+    # --------------------------
     # This handles an open websocket connection.
     async def update(
         self,
@@ -325,24 +314,41 @@ class WebSocketWatcher:
         websocket: websockets.server.WebSocketServerProtocol,
     ) -> None:
         try:
-            # Very important: this hangs in shutdown unless we pass ``self.stop_event`` to the watcher.
-            async for change in awatch(self.log_path, stop_event=self.stop_event):  # type: ignore
-                print(change)
-                await websocket.send("new data")
+            # Wait until the watcher signals a change.
+            await self.update_event.wait()
+            # Tell this client to refresh. Exit after this, since the refresh causes it to close the connection. TODO: just send the updated table instead.
+            await websocket.send("new data")
         except websockets.exceptions.WebSocketException:
             # Just allow the socket to close.
             pass
         print("Websocket connection closed.")
 
+    async def watcher(self) -> None:
+        # Very important: this hangs in shutdown unless we pass ``self.stop_event`` to the watcher.
+        async for change in awatch(self.log_path, stop_event=self.stop_event):  # type: ignore
+            print(change)
+            # Signal any websockets to do an update.
+            self.update_event.set()
+            # Reset to prepare for the next signal.
+            self.update_event.clear()
+
+        # On shutdown, signal any waiting websockets so they can exit.
+        self.update_event.set()
+
     # This is the websocket server main loop, which waits for connections.
     async def amain(self) -> None:
         self.loop = asyncio.get_running_loop()
         self.stop_event = asyncio.Event()
+        self.update_event = asyncio.Event()
+
+        # Run the watcher.
+        watcher_task = asyncio.create_task(self.watcher())
 
         # Start the server; per the `docs <https://websockets.readthedocs.io/en/stable/reference/server.html#websockets.server.serve>`__, exiting this context manager shuts it down.
         async with websockets.serve(self.update, "0.0.0.0", 8765):  # type:ignore
             # Run the server until a stop is requested.
             await self.stop_event.wait()
+        await watcher_task
         print("Websocket server shutting down...")
 
 
@@ -375,7 +381,8 @@ def main(argv):
     start_iperf3_servers(num_servers)
     wsw = WebSocketWatcher(log_dir)
     wsw.start()
-    run(host="0.0.0.0", port=80)
+    # Ideally, run an asyncio server; however, I don't understand how this would integrate into the event loop. So, use a multi-threaded server instead.
+    run(host="0.0.0.0", port=80, server="paste")
 
     # Shut down.
     print("Shutting down...")

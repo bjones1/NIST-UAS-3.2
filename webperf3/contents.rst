@@ -14,6 +14,7 @@ Modules
     :maxdepth: 2
 
     webperf3/webperf3.py
+    webperf3/webperf3.js
     webperf3/ci_utils.py
     webperf3/ReconnectingWebsocket.js
     webperf3/__init__.py

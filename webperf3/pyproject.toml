@@ -25,6 +25,7 @@ license = "GPL"
 # how poetry specifies dependencies.
 [tool.poetry.dependencies]
 bottle = "^0.12"
+paste = "^3.0.0"
 python = "^3.9"
 watchgod = "^0.8"
 websockets = "^10.0"
