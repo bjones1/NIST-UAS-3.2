@@ -9,6 +9,7 @@
 sudo apt install -y dnsmasq hostapd
 sudo cp -r production/files/* /
 sudo rfkill unblock wlan
+sudo systemctl enable hostapd
 
 # Reboot for changes to take effect.
 sudo systemctl reboot

@@ -28,12 +28,14 @@ function update_table() {
         })
         .then((iperf3_data) => {
             // Create the new table.
-            let old_iperf3_data = [];
+            let old_iperf3_data;
             try {
                 old_iperf3_data = JSON.parse(
                     window.localStorage.getItem("iperf3-data")
                 );
             } catch (e) {}
+            // The try/catch will succeed if there's nothing in local storage, but end up with a value of null. Replace this with an empty array.
+            old_iperf3_data = old_iperf3_data || [];
             let html = `
 <tr>
     <th>Port</th>
@@ -45,7 +47,7 @@ function update_table() {
             iperf3_data.forEach((row, index) => {
                 html += `
 <tr ${
-                    scalar_array_equals(old_iperf3_data[index], row)
+                    scalar_array_equals(old_iperf3_data[index] || [], row)
                         ? ""
                         : "style='background-color:lightcoral;'"
                 }>
