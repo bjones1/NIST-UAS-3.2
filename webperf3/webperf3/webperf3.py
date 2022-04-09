@@ -163,7 +163,7 @@ def iperf3_log_file_name(
     # A Path to an iPerf3 log file.
 ) -> Path:
     return (
-        Path.home() / f"/iperf3-logs/port-{server_index}.json"
+        Path.home() / f"iperf3-logs/port-{server_index}.json"
         if is_win
         else Path(f"/home/pi/iperf3-logs/port-{server_index}.json")
     )
