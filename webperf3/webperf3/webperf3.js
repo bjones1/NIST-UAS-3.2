@@ -12,20 +12,22 @@ const formatDate = (datesecs) =>
 const formatRate = (bps) =>
     bps ? Number(Math.round(bps)).toLocaleString() : "";
 
-// Given text, escape it so it formats correctly as HTML. Taken from https://stackoverflow.com/a/48054293. Note that this also transforms newlines into <br> -- see https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/innerText.
-function escapeHTML(unsafeText) {
-    let div = document.createElement("div");
+// Given text, escape it so it formats correctly as HTML. Taken from https://stackoverflow.com/a/48054293. Note that this also transforms newlines into ``<br>`` -- see https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent.
+const escapeHTML = (unsafeText) => {
+    const div = document.createElement("div");
     div.textContent = unsafeText;
     return div.innerHTML;
-}
+};
 
 // Compare two arrays with scalar contents from `SO <https://stackoverflow.com/a/19746771/16038919>`__. Insert snarky comment about JavaScript as a programming language here.
 const scalar_array_equals = (array1, array2) =>
     array1.length === array2.length &&
     array1.every((value, index) => value === array2[index]);
 
+// Update the performance table
+// ============================
 // Fetch an updated table from the server.
-function update_table() {
+const update_table = () => {
     fetch("/table")
         .then((response) => {
             if (!response.ok) {
@@ -81,13 +83,13 @@ function update_table() {
                 error
             )
         );
-}
+};
 
 // Websocket
 // =========
 // A function to update the connection status of the webpage.
 const setIsConnected = (text, backgroundColor) => {
-    let ic = document.getElementById("is_connected");
+    const ic = document.getElementById("is_connected");
     ic.textContent = text;
     ic.style.backgroundColor = backgroundColor;
 };
