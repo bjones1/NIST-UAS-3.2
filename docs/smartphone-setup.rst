@@ -16,7 +16,7 @@ Android
 #.  Connect the device the Pi via Ethernet or WiFi (SSID: ``PiNet``, password ``UAS3Chal``).
 #.  Verify that an IP in the range 192.168.3.1xx was assigned.
 #.  From the Termux terminal ping the Raspberry Pi server to ensure connectivity: ``ping 192.168.3.1``.
-#.  Test data transfer between the UE and Pi from the Termux terminal: run ``iPerf3 --client 192.168.3.1 --bidir --extra-data "<UE name here>" --port <port>`` where ``<port>`` is between 5201 and 5211 and ``<UE name here>`` is an arbitrary name for this device, used when displaying the device's name on the webserver.
+#.  Test data transfer between the UE and Pi from the Termux terminal: run ``iperf3 --client 192.168.3.1 --bidir --extra-data "<UE name here>" --port <port>`` where ``<port>`` is between 5201 and 5211 and ``<UE name here>`` is an arbitrary name for this device, used when displaying the device's name on the webserver.
 
 
 iOS
@@ -44,7 +44,7 @@ Windows/OS X
     #.  Wi-Fi devices will be assigned an address in the 192.168.3.1xx range.
 
 #.  From the terminal/command prompt, ping the Raspberry Pi server to ensure connectivity: ``ping 192.168.3.1``.
-#.  Test data transfer between the UE and Pi from the terminal/command prompt: run ``iPerf3 --client 192.168.3.1 --bidir --extra-data "<UE name here>" --port <port>`` where ``<port>`` is between 5201 and 5211 and ``<UE name here>`` is an arbitrary name for this device, used when displaying the device's name on the webserver.
+#.  Test data transfer between the UE and Pi from the terminal/command prompt: run ``iperf3 --client 192.168.3.1 --bidir --extra-data "<UE name here>" --port <port>`` where ``<port>`` is between 5201 and 5211 and ``<UE name here>`` is an arbitrary name for this device, used when displaying the device's name on the webserver.
 
 
 Viewing results
